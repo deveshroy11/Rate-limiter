@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Limiter Dashboard</title>
+  <meta name="description"
+    content="Interactive dashboard to visualize and test four rate-limiting algorithms in real time.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0a0a12;
+      --surface: #12121f;
+      --surface2: #1a1a2e;
+      --border: #2a2a3e;
+      --text: #e4e4ef;
+      --text-muted: #8888a0;
+      --accent: #6c5ce7;
+      --accent2: #a29bfe;
+      --success: #00cec9;
+      --danger: #ff6b6b;
+      --warning: #feca57;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --glass: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.08);
+    }
+
+    html {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh
+    }
+
+    body {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 32px
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -.5px
+    }
+
+    .header p {
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-size: .9rem
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 28px
+    }
+
+    .tab {
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--glass);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 600;
+      transition: all .25s;
+      letter-spacing: .3px
+    }
+
+    .tab:hover {
+      border-color: var(--accent);
+      color: var(--text)
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 20px rgba(108, 92, 231, .35)
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px
+    }
+
+    @media(max-width:768px) {
+      .grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      transition: border-color .3s
+    }
+
+    .card:hover {
+      border-color: var(--border)
+    }
+
+    .card h3 {
+      font-size: .85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    /* ── Gauge ── */
+    .gauge-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 16px 0
+    }
+
+    .gauge {
+      position: relative;
+      width: 180px;
+      height: 180px
+    }
+
+    .gauge svg {
+      transform: rotate(-90deg)
+    }
+
+    .gauge-bg {
+      fill: none;
+      stroke: var(--surface2);
+      stroke-width: 12
+    }
+
+    .gauge-fill {
+      fill: none;
+      stroke: url(#gaugeGrad);
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset .5s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    .gauge-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center
+    }
+
+    .gauge-val {
+      font-size: 2.2rem;
+      font-weight: 800
+    }
+
+    .gauge-sub {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: 2px
+    }
+
+    /* ── Stats Row ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 16px
+    }
+
+    .stat {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      text-align: center
+    }
+
+    .stat-val {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text)
+    }
+
+    .stat-lbl {
+      font-size: .7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-top: 4px
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .input-group label {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .input-group input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: .85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s
+    }
+
+    .input-group input:focus {
+      border-color: var(--accent)
+    }
+
+    .row {
+      display: flex;
+      gap: 10px
+    }
+
+    .row>* {
+      flex: 1
+    }
+
+    .btn {
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .3px
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(108, 92, 231, .3)
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(108, 92, 231, .45)
+    }
+
+    .btn-primary:active {
+      transform: translateY(0)
+    }
+
+    .btn-danger {
+      background: rgba(255, 107, 107, .12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 107, 107, .2)
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 107, 107, .2)
+    }
+
+    .btn-burst {
+      background: rgba(254, 202, 87, .12);
+      color: var(--warning);
+      border: 1px solid rgba(254, 202, 87, .2)
+    }
+
+    .btn-burst:hover {
+      background: rgba(254, 202, 87, .2)
+    }
+
+    /* ── Log ── */
+    .log-wrap {
+      grid-column: 1/-1
+    }
+
+    .log {
+      max-height: 260px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: .8rem;
+      font-family: 'Inter', monospace;
+      background: var(--surface2);
+      animation: slideIn .3s ease
+    }
+
+    .log-entry.allowed {
+      border-left: 3px solid var(--success)
+    }
+
+    .log-entry.denied {
+      border-left: 3px solid var(--danger)
+    }
+
+    .log-time {
+      color: var(--text-muted);
+      font-size: .72rem;
+      min-width: 72px
+    }
+
+    .log-status {
+      font-weight: 700;
+      min-width: 56px
+    }
+
+    .log-entry.allowed .log-status {
+      color: var(--success)
+    }
+
+    .log-entry.denied .log-status {
+      color: var(--danger)
+    }
+
+    .log-detail {
+      color: var(--text-muted);
+      margin-left: auto;
+      font-size: .72rem
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ── Peek Panel ── */
+    .peek-data {
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: 'Inter', monospace;
+      font-size: .8rem;
+      line-height: 1.7;
+      color: var(--accent2);
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>🚦 Rate Limiter Dashboard</h1>
+    <p>Visualize &amp; test four rate-limiting algorithms in real time</p>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-algo="token-bucket">Token Bucket</button>
+    <button class="tab" data-algo="sliding-window-log">Sliding Window Log</button>
+    <button class="tab" data-algo="sliding-window-counter">Sliding Window Counter</button>
+    <button class="tab" data-algo="fixed-window">Fixed Window</button>
+  </div>
+
+  <div class="grid">
+    <!-- Gauge -->
+    <div class="card">
+      <h3><span>📊</span> Capacity</h3>
+      <div class="gauge-wrap">
+        <div class="gauge">
+          <svg viewBox="0 0 200 200" width="180" height="180">
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="var(--success)" />
+                <stop offset="100%" stop-color="var(--accent)" />
+              </linearGradient>
+            </defs>
+            <circle class="gauge-bg" cx="100" cy="100" r="85" />
+            <circle class="gauge-fill" id="gaugeFill" cx="100" cy="100" r="85" stroke-dasharray="534.07"
+              stroke-dashoffset="0" />
+          </svg>
+          <div class="gauge-label">
+            <span class="gauge-val" id="gaugeVal">10</span>
+            <span class="gauge-sub" id="gaugeSub">remaining</span>
+          </div>
+        </div>
+      </div>
+      <div class="stats" id="statsRow">
+        <div class="stat">
+          <div class="stat-val" id="statLimit">10</div>
+          <div class="stat-lbl">Limit</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="statRemaining">10</div>
+          <div class="stat-lbl">Remaining</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="statRetry">0ms</div>
+          <div class="stat-lbl">Retry After</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+      <h3><span>🎮</span> Controls</h3>
+      <div class="controls">
+        <div class="row">
+          <div class="input-group">
+            <label for="keyInput">Key</label>
+            <input type="text" id="keyInput" value="user:42" placeholder="e.g. user:42">
+          </div>
+          <div class="input-group">
+            <label for="costInput">Cost</label>
+            <input type="number" id="costInput" value="1" min="1" max="100">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btnConsume">⚡ Send Request</button>
+        <div class="row">
+          <button class="btn btn-burst" id="btnBurst">🔥 Burst (5×)</button>
+          <button class="btn btn-danger" id="btnReset">🔄 Reset Key</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Peek -->
+    <div class="card">
+      <h3><span>🔍</span> Peek — Internal State</h3>
+      <div class="peek-data" id="peekData">Click "Send Request" or select an algorithm to inspect state.</div>
+    </div>
+
+    <!-- Log -->
+    <div class="card log-wrap">
+      <h3><span>📜</span> Request Log</h3>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const CIRC = 2 * Math.PI * 85; // ~534.07
+    let currentAlgo = 'token-bucket';
+    let limit = 10;
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    // ── Tabs ──
+    $('#tabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab) return;
+      $$('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentAlgo = tab.dataset.algo;
+      refreshPeek();
+    });
+
+    // ── API helpers ──
+    async function apiConsume(key, cost) {
+      const res = await fetch(`/api/${currentAlgo}/consume?key=${encodeURIComponent(key)}&cost=${cost}`, { method: 'POST' });
+      return res.json();
+    }
+    async function apiPeek(key) {
+      const res = await fetch(`/api/${currentAlgo}/peek?key=${encodeURIComponent(key)}`);
+      return res.json();
+    }
+    async function apiReset(key) {
+      await fetch(`/api/${currentAlgo}/reset?key=${encodeURIComponent(key)}`, { method: 'POST' });
+    }
+
+    // ── Update UI ──
+    function updateGauge(remaining, lim) {
+      limit = lim;
+      const pct = Math.max(0, remaining / lim);
+      const offset = CIRC * (1 - pct);
+      $('#gaugeFill').style.strokeDashoffset = offset;
+      $('#gaugeVal').textContent = remaining;
+      $('#statLimit').textContent = lim;
+      $('#statRemaining').textContent = remaining;
+    }
+
+    function addLog(result) {
+      const log = $('#log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${result.allowed ? 'allowed' : 'denied'}`;
+      const now = new Date().toLocaleTimeString();
+      entry.innerHTML = `
+    <span class="log-time">${now}</span>
+    <span class="log-status">${result.allowed ? '✓ PASS' : '✗ DENY'}</span>
+    <span>remaining: ${result.remaining}</span>
+    <span class="log-detail">${result.retryAfterMs > 0 ? 'retry: ' + result.retryAfterMs + 'ms' : ''}</span>
+  `;
+      log.prepend(entry);
+      if (log.children.length > 50) log.lastChild.remove();
+    }
+
+    async function refreshPeek() {
+      const key = $('#keyInput').value || 'default';
+      try {
+        const data = await apiPeek(key);
+        $('#peekData').textContent = JSON.stringify(data, null, 2);
+        // Update gauge from peek data
+        if ('tokens' in data) updateGauge(data.tokens, data.capacity);
+        else if ('remaining' in data) updateGauge(data.remaining, data.limit);
+        else if ('estimated' in data) updateGauge(Math.max(0, Math.floor(data.limit - data.estimated)), data.limit);
+        else if ('count' in data) updateGauge(data.count !== undefined ? data.limit - data.count : 0, data.limit);
+      } catch { /* ignore */ }
+    }
+
+    // ── Actions ──
+    $('#btnConsume').addEventListener('click', async () => {
+      const key = $('#keyInput').value || 'default';
+      const cost = parseInt($('#costInput').value, 10) || 1;
+      const result = await apiConsume(key, cost);
+      updateGauge(result.remaining, result.limit);
+      $('#statRetry').textContent = result.retryAfterMs + 'ms';
+      addLog(result);
+      refreshPeek();
+    });
+
+    $('#btnBurst').addEventListener('click', async () => {
+      const key = $('#keyInput').value || 'default';
+      const cost = parseInt($('#costInput').value, 10) || 1;
+      for (let i = 0; i < 5; i++) {
+        const result = await apiConsume(key, cost);
+        updateGauge(result.remaining, result.limit);
+        $('#statRetry').textContent = result.retryAfterMs + 'ms';
+        addLog(result);
+      }
+      refreshPeek();
+    });
+
+    $('#btnReset').addEventListener('click', async () => {
+      const key = $('#keyInput').value || 'default';
+      await apiReset(key);
+      refreshPeek();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry allowed';
+      entry.innerHTML = `<span class="log-time">${new Date().toLocaleTimeString()}</span><span class="log-status">↺ RESET</span><span>key: ${key}</span>`;
+      $('#log').prepend(entry);
+    });
+
+    // ── Initial load ──
+    refreshPeek();
+  </script>
+</body>
+
+</html>

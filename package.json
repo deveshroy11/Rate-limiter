@@ -1,0 +1,34 @@
+{
+  "name": "@rate-limiter/core",
+  "version": "1.0.0",
+  "description": "Production-quality rate-limiting library with four pluggable algorithms, Express middleware, and an interactive dashboard.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./middleware": "./src/middleware/rateLimitMiddleware.js",
+    "./algorithms/*": "./src/algorithms/*.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:verbose": "vitest run --reporter=verbose",
+    "dev": "node demo/server.js",
+    "start": "node demo/server.js"
+  },
+  "keywords": [
+    "rate-limiter",
+    "token-bucket",
+    "sliding-window",
+    "fixed-window",
+    "middleware",
+    "express"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.3"
+  }
+}
