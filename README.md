@@ -1,4 +1,4 @@
-# 🚦 Rate Limiter
+#  Rate Limiter
 
 A production-quality Node.js rate-limiting library with **four pluggable algorithms**, Express middleware, and an interactive visual dashboard.
 
